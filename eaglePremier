@@ -12,12 +12,11 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Debris = game:GetService("Debris")
 
--- State Variables
-local spamActive = false
+-- Safe State Variables
+local spamActive = true
 local antiLag = false
-local targetCPS = 60
-local spamAccum = 0
-local fovValue = 70
+local lastParryTime = 0
+local fovValue = 120
 
 -- Delta Safe Remote Fetcher (No memory crashes)
 local parryRemote = nil
@@ -74,7 +73,7 @@ stroke.Parent = main
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "EAGLE Hub X (Delta)"
+title.Text = "EAGLE Hub X (Bypass)"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 16
 title.Font = Enum.Font.SourceSansBold
@@ -116,7 +115,7 @@ local function makeToggle(text, yPos, callback)
 end
 
 -- Add Toggles
-makeToggle("Auto Parry Macro", 50, function(state) spamActive = state end)
+makeToggle("Humanized Auto Parry", 50, function(state) spamActive = state end)
 
 makeToggle("FPS Anti-Lag", 105, function(state)
     antiLag = state
@@ -152,14 +151,19 @@ RunService.RenderStepped:Connect(function()
     if camera then camera.FieldOfView = fovValue end
 end)
 
-RunService.Heartbeat:Connect(function(deltaTime)
+-- Safe Anti-Ban Execution Logic
+RunService.Heartbeat:Connect(function()
     if not spamActive or not parryRemote then return end
-    spamAccum = spamAccum + (targetCPS * deltaTime)
-    local firesThisFrame = math.floor(spamAccum)
-    spamAccum = spamAccum - firesThisFrame
     
-    for i = 1, firesThisFrame do
+    local currentTime = tick()
+    -- This sets a randomized humanized delay between 0.07 and 0.095 seconds (roughly 11-14 CPS)
+    local randomDelay = math.random(70, 95) / 1000
+    
+    if currentTime - lastParryTime >= randomDelay then
+        lastParryTime = currentTime
         local args = buildParryArgs()
-        if args then parryRemote:FireServer(unpack(args)) end
+        if args then 
+            parryRemote:FireServer(unpack(args)) 
+        end
     end
 end)
